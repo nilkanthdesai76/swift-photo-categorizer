@@ -21,6 +21,7 @@ struct DemoContentView: View {
     @State private var scanProgress: ClassificationProgress?
     @State private var selectedSource = 1 // Default to 1 (Live Photo Library)
     @State private var scanAllPhotos = true // Default to true (Whole Photo Library!)
+    @State private var useFastEngine = true // Default to true (⚡ Smart Fast Engine!)
     @State private var statusMessage: String = "Ready to categorize"
     @State private var activeScanTask: Task<Void, Never>?
     
@@ -36,7 +37,7 @@ struct DemoContentView: View {
                     .pickerStyle(.segmented)
                     .padding(.horizontal)
                     .padding(.top, 8)
-                    .padding(.bottom, selectedSource == 1 ? 4 : 8)
+                    .padding(.bottom, 6)
                     .onChange(of: selectedSource) { newSource in
                         activeScanTask?.cancel()
                         isScanning = false
@@ -48,21 +49,41 @@ struct DemoContentView: View {
                         }
                     }
                     
-                    // Scope Toggle (Only visible for Photo Library)
+                    // Engine & Scope Controls (Photo Library mode)
                     if selectedSource == 1 {
-                        HStack {
-                            Text("Scan Scope:")
-                                .font(.caption.bold())
-                                .foregroundColor(.secondary)
-                            
-                            Picker("Scope", selection: $scanAllPhotos) {
-                                Text("Whole Library (All Photos)").tag(true)
-                                Text("Quick Test (100 Photos)").tag(false)
+                        VStack(spacing: 6) {
+                            Picker("Engine", selection: $useFastEngine) {
+                                Text("⚡ Smart Fast (Zero Heat)").tag(true)
+                                Text("🧠 Deep Vision (Heavy)").tag(false)
                             }
-                            .pickerStyle(.menu)
-                            .font(.caption)
+                            .pickerStyle(.segmented)
+                            .onChange(of: useFastEngine) { _ in
+                                scanPhotoLibrary()
+                            }
                             
-                            Spacer()
+                            HStack {
+                                Text("Scope:")
+                                    .font(.caption.bold())
+                                    .foregroundColor(.secondary)
+                                
+                                Picker("Scope", selection: $scanAllPhotos) {
+                                    Text("Whole Library (All Photos)").tag(true)
+                                    Text("Quick Test (100 Photos)").tag(false)
+                                }
+                                .pickerStyle(.menu)
+                                .font(.caption)
+                                
+                                Spacer()
+                                
+                                Button {
+                                    ClassificationCache.shared.clear()
+                                    scanPhotoLibrary()
+                                } label: {
+                                    Label("Clear Cache", systemImage: "trash")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
                         }
                         .padding(.horizontal)
                         .padding(.bottom, 6)
@@ -213,27 +234,48 @@ struct DemoContentView: View {
                 return
             }
             
-            let scanner = PhotoLibraryClassifier()
             let maxCount = scanAllPhotos ? nil : 100
+            let result: ClassificationScanResult
             
-            let result = await scanner.scanLibrary(
-                maxAssets: maxCount,
-                progressHandler: { progress in
-                    Task { @MainActor in
-                        self.scanProgress = progress
+            if useFastEngine {
+                let fastScanner = FastPhotoLibraryClassifier()
+                result = await fastScanner.scanLibrary(
+                    maxAssets: maxCount,
+                    useCache: true,
+                    progressHandler: { progress in
+                        Task { @MainActor in
+                            self.scanProgress = progress
+                        }
+                    },
+                    onPhotoClassified: { photo, progress in
+                        Task { @MainActor in
+                            self.photos.append(photo)
+                            self.scanProgress = progress
+                        }
                     }
-                },
-                onPhotoClassified: { photo, progress in
-                    Task { @MainActor in
-                        self.photos.append(photo)
-                        self.scanProgress = progress
+                )
+            } else {
+                let deepScanner = PhotoLibraryClassifier()
+                result = await deepScanner.scanLibrary(
+                    maxAssets: maxCount,
+                    progressHandler: { progress in
+                        Task { @MainActor in
+                            self.scanProgress = progress
+                        }
+                    },
+                    onPhotoClassified: { photo, progress in
+                        Task { @MainActor in
+                            self.photos.append(photo)
+                            self.scanProgress = progress
+                        }
                     }
-                }
-            )
+                )
+            }
             
             await MainActor.run {
                 self.isScanning = false
-                self.statusMessage = "Classified \(result.totalScanned) photos in \(String(format: "%.1f", result.elapsedTimeSeconds))s"
+                let engineLabel = useFastEngine ? "⚡ Fast Engine" : "🧠 Vision Engine"
+                self.statusMessage = "[\(engineLabel)] Classified \(result.totalScanned) photos in \(String(format: "%.2f", result.elapsedTimeSeconds))s"
             }
         }
         #endif

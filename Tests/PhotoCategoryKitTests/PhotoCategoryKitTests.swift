@@ -156,4 +156,86 @@ final class PhotoCategoryKitTests: XCTestCase {
         XCTAssertEqual(result.count(for: .vehicle), 0)
         XCTAssertEqual(result.elapsedTimeSeconds, 1.5)
     }
+    
+    // MARK: - 12. Fast Micro-Pixel Color Physics
+    
+    func testColorPhysicsClassifierFoliage() {
+        // Generate a 16x16 pure green/foliage image
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        var pixels = [UInt8](repeating: 0, count: 16 * 16 * 4)
+        for i in 0..<(16 * 16) {
+            pixels[i * 4 + 0] = 30  // R
+            pixels[i * 4 + 1] = 180 // G (dominant foliage green)
+            pixels[i * 4 + 2] = 40  // B
+            pixels[i * 4 + 3] = 255 // A
+        }
+        
+        let context = CGContext(
+            data: &pixels,
+            width: 16,
+            height: 16,
+            bitsPerComponent: 8,
+            bytesPerRow: 16 * 4,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )
+        guard let cgImage = context?.makeImage() else {
+            XCTFail("Failed to create test foliage image")
+            return
+        }
+        
+        let score = ColorPhysicsClassifier.classify(cgImage: cgImage)
+        XCTAssertEqual(score.category, .nature)
+        XCTAssertGreaterThan(score.confidence, 0.5)
+    }
+    
+    func testColorPhysicsClassifierHighContrastDocument() {
+        // Generate a 16x16 bimodal white & black image (text on document)
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        var pixels = [UInt8](repeating: 0, count: 16 * 16 * 4)
+        for i in 0..<(16 * 16) {
+            let isBlack = (i % 4 == 0)
+            let val: UInt8 = isBlack ? 10 : 245
+            pixels[i * 4 + 0] = val
+            pixels[i * 4 + 1] = val
+            pixels[i * 4 + 2] = val
+            pixels[i * 4 + 3] = 255
+        }
+        
+        let context = CGContext(
+            data: &pixels,
+            width: 16,
+            height: 16,
+            bitsPerComponent: 8,
+            bytesPerRow: 16 * 4,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )
+        guard let cgImage = context?.makeImage() else {
+            XCTFail("Failed to create test document image")
+            return
+        }
+        
+        let score = ColorPhysicsClassifier.classify(cgImage: cgImage)
+        XCTAssertEqual(score.category, .documents)
+    }
+    
+    // MARK: - 13. Classification Cache
+    
+    func testClassificationCache() {
+        let cache = ClassificationCache.shared
+        let testPhoto = CategorizedPhoto(
+            id: "test_cache_asset_001",
+            assetIdentifier: "test_cache_asset_001",
+            primaryCategory: .nature,
+            primaryConfidence: 0.99
+        )
+        
+        cache.put(testPhoto)
+        let retrieved = cache.get(for: "test_cache_asset_001")
+        XCTAssertNotNil(retrieved)
+        XCTAssertEqual(retrieved?.id, "test_cache_asset_001")
+        XCTAssertEqual(retrieved?.primaryCategory, .nature)
+        XCTAssertEqual(retrieved?.primaryConfidence, 0.99)
+    }
 }

@@ -5,10 +5,13 @@ public struct PhotoInspectorSheet: View {
     public let photo: CategorizedPhoto
     public let onDismiss: () -> Void
     
+    @State private var currentPhoto: CategorizedPhoto
     @State private var previewImage: Image?
+    @State private var isRunningDeepVision: Bool = false
     
     public init(photo: CategorizedPhoto, onDismiss: @escaping () -> Void) {
         self.photo = photo
+        self._currentPhoto = State(initialValue: photo)
         self.onDismiss = onDismiss
     }
     
@@ -25,13 +28,13 @@ public struct PhotoInspectorSheet: View {
                                 .frame(maxHeight: 280)
                                 .cornerRadius(12)
                         } else {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(hex: photo.dominantColorHex).opacity(0.3))
+                                RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(hex: currentPhoto.dominantColorHex).opacity(0.3))
                                 .frame(height: 220)
                                 .overlay {
-                                    Image(systemName: photo.primaryCategory.sfSymbol)
+                                    Image(systemName: currentPhoto.primaryCategory.sfSymbol)
                                         .font(.system(size: 48))
-                                        .foregroundColor(Color(hex: photo.primaryCategory.themeColorHex))
+                                        .foregroundColor(Color(hex: currentPhoto.primaryCategory.themeColorHex))
                                 }
                         }
                     }
@@ -40,21 +43,21 @@ public struct PhotoInspectorSheet: View {
                     // Winning Category Card
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
-                            Label(photo.primaryCategory.displayName, systemImage: photo.primaryCategory.sfSymbol)
+                            Label(currentPhoto.primaryCategory.displayName, systemImage: currentPhoto.primaryCategory.sfSymbol)
                                 .font(.title3.bold())
-                                .foregroundColor(Color(hex: photo.primaryCategory.themeColorHex))
+                                .foregroundColor(Color(hex: currentPhoto.primaryCategory.themeColorHex))
                             Spacer()
-                            Text("\(Int(photo.primaryConfidence * 100))% confidence")
+                            Text("\(Int(currentPhoto.primaryConfidence * 100))% confidence")
                                 .font(.subheadline.bold())
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 4)
-                                .background(Color(hex: photo.primaryCategory.themeColorHex).opacity(0.15))
-                                .foregroundColor(Color(hex: photo.primaryCategory.themeColorHex))
+                                .background(Color(hex: currentPhoto.primaryCategory.themeColorHex).opacity(0.15))
+                                .foregroundColor(Color(hex: currentPhoto.primaryCategory.themeColorHex))
                                 .clipShape(Capsule())
                         }
                         
-                        ProgressView(value: Double(photo.primaryConfidence))
-                            .tint(Color(hex: photo.primaryCategory.themeColorHex))
+                        ProgressView(value: Double(currentPhoto.primaryConfidence))
+                            .tint(Color(hex: currentPhoto.primaryCategory.themeColorHex))
                     }
                     .padding()
                     .background(Color.secondary.opacity(0.08))
@@ -62,12 +65,12 @@ public struct PhotoInspectorSheet: View {
                     .padding(.horizontal)
                     
                     // Secondary Categories (if any)
-                    if !photo.secondaryCategories.isEmpty {
+                    if !currentPhoto.secondaryCategories.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Competing Categories")
                                 .font(.headline)
                             
-                            ForEach(photo.secondaryCategories, id: \.category) { sec in
+                            ForEach(currentPhoto.secondaryCategories, id: \.category) { sec in
                                 HStack {
                                     Image(systemName: sec.category.sfSymbol)
                                         .foregroundColor(Color(hex: sec.category.themeColorHex))
@@ -89,7 +92,7 @@ public struct PhotoInspectorSheet: View {
                     }
                     
                     // Face Detection Information
-                    if photo.faces.hasFaces {
+                    if currentPhoto.faces.hasFaces {
                         VStack(alignment: .leading, spacing: 6) {
                             Label("Face Detection", systemImage: "person.crop.rectangle.badge.plus")
                                 .font(.headline)
@@ -97,7 +100,7 @@ public struct PhotoInspectorSheet: View {
                             HStack {
                                 Text("Detected Faces:")
                                 Spacer()
-                                Text("\(photo.faces.faceCount) human \(photo.faces.faceCount == 1 ? "face" : "faces")")
+                                Text("\(currentPhoto.faces.faceCount) human \(currentPhoto.faces.faceCount == 1 ? "face" : "faces")")
                                     .font(.subheadline.bold())
                             }
                         }
@@ -107,14 +110,37 @@ public struct PhotoInspectorSheet: View {
                         .padding(.horizontal)
                     }
                     
-                    // Vision Classification Tags
-                    if !photo.tags.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Apple Vision Tags")
+                    // Vision Classification Tags & On-Demand Deep Analysis
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("Classification Tags")
                                 .font(.headline)
-                            
+                            Spacer()
+                            if isRunningDeepVision {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                            } else {
+                                Button {
+                                    runDeepVisionAnalysis()
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "sparkles")
+                                        Text("Deep Vision")
+                                    }
+                                    .font(.caption.bold())
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.accentColor.opacity(0.12))
+                                    .foregroundColor(.accentColor)
+                                    .clipShape(Capsule())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        
+                        if !currentPhoto.tags.isEmpty {
                             FlowTagsLayout(spacing: 8) {
-                                ForEach(photo.tags) { tag in
+                                ForEach(currentPhoto.tags) { tag in
                                     HStack(spacing: 4) {
                                         Text(tag.displayLabel)
                                         Text("\(Int(tag.confidence * 100))%")
@@ -129,12 +155,16 @@ public struct PhotoInspectorSheet: View {
                                     .clipShape(Capsule())
                                 }
                             }
+                        } else {
+                            Text("Fast smart-categorized. Tap 'Deep Vision' to extract 1,300+ Neural Engine tags.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
-                        .padding()
-                        .background(Color.secondary.opacity(0.08))
-                        .cornerRadius(12)
-                        .padding(.horizontal)
                     }
+                    .padding()
+                    .background(Color.secondary.opacity(0.08))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
                     
                     // Technical Details & Dominant Palette
                     VStack(alignment: .leading, spacing: 8) {
@@ -146,27 +176,27 @@ public struct PhotoInspectorSheet: View {
                             Spacer()
                             HStack(spacing: 6) {
                                 Circle()
-                                    .fill(Color(hex: photo.dominantColorHex))
+                                    .fill(Color(hex: currentPhoto.dominantColorHex))
                                     .frame(width: 16, height: 16)
-                                Text(photo.dominantColorHex)
+                                Text(currentPhoto.dominantColorHex)
                                     .font(.caption.monospaced())
                             }
                         }
                         
-                        if photo.pixelWidth > 0 {
+                        if currentPhoto.pixelWidth > 0 {
                             HStack {
                                 Text("Dimensions")
                                 Spacer()
-                                Text(photo.formattedDimensions)
+                                Text(currentPhoto.formattedDimensions)
                                     .font(.subheadline)
                             }
                         }
                         
-                        if photo.fileSizeBytes > 0 {
+                        if currentPhoto.fileSizeBytes > 0 {
                             HStack {
                                 Text("File Size")
                                 Spacer()
-                                Text(photo.formattedFileSize)
+                                Text(currentPhoto.formattedFileSize)
                                     .font(.subheadline)
                             }
                         }
@@ -188,9 +218,9 @@ public struct PhotoInspectorSheet: View {
                 }
             }
         }
-        .task(id: photo.id) {
+        .task(id: currentPhoto.id) {
             #if canImport(UIKit) || canImport(AppKit)
-            if let platformImg = await PhotoThumbnailLoader.shared.loadImage(for: photo, targetSize: CGSize(width: 600, height: 600)) {
+            if let platformImg = await PhotoThumbnailLoader.shared.loadImage(for: currentPhoto, targetSize: CGSize(width: 600, height: 600)) {
                 #if canImport(UIKit)
                 self.previewImage = Image(uiImage: platformImg)
                 #elseif canImport(AppKit)
@@ -198,6 +228,55 @@ public struct PhotoInspectorSheet: View {
                 #endif
             }
             #endif
+        }
+    }
+    
+    private func runDeepVisionAnalysis() {
+        guard !isRunningDeepVision else { return }
+        isRunningDeepVision = true
+        
+        Task {
+            #if canImport(UIKit)
+            if let platformImg = await PhotoThumbnailLoader.shared.loadImage(for: currentPhoto, targetSize: CGSize(width: 480, height: 480)),
+               let cgImage = platformImg.cgImage {
+                if let deepResult = try? PhotoClassifier.shared.classify(
+                    image: cgImage,
+                    id: currentPhoto.id,
+                    assetIdentifier: currentPhoto.assetIdentifier,
+                    fileURL: currentPhoto.fileURL,
+                    dateTaken: currentPhoto.dateTaken,
+                    fileSizeBytes: currentPhoto.fileSizeBytes
+                ) {
+                    await MainActor.run {
+                        self.currentPhoto = deepResult
+                        self.isRunningDeepVision = false
+                    }
+                    return
+                }
+            }
+            #elseif canImport(AppKit)
+            if let platformImg = await PhotoThumbnailLoader.shared.loadImage(for: currentPhoto, targetSize: CGSize(width: 480, height: 480)) {
+                var rect = CGRect(origin: .zero, size: platformImg.size)
+                if let cgImage = platformImg.cgImage(forProposedRect: &rect, context: nil, hints: nil),
+                   let deepResult = try? PhotoClassifier.shared.classify(
+                    image: cgImage,
+                    id: currentPhoto.id,
+                    assetIdentifier: currentPhoto.assetIdentifier,
+                    fileURL: currentPhoto.fileURL,
+                    dateTaken: currentPhoto.dateTaken,
+                    fileSizeBytes: currentPhoto.fileSizeBytes
+                ) {
+                    await MainActor.run {
+                        self.currentPhoto = deepResult
+                        self.isRunningDeepVision = false
+                    }
+                    return
+                }
+            }
+            #endif
+            await MainActor.run {
+                self.isRunningDeepVision = false
+            }
         }
     }
 }
