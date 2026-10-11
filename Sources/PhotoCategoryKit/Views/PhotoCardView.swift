@@ -89,20 +89,21 @@ public struct PhotoCardView: View {
             .background(Color.secondary.opacity(0.06))
             .cornerRadius(12)
         }
-        .buttonStyle(.plain)
-        .task {
-            loadImage()
+        .task(id: photo.id) {
+            await loadImage()
         }
     }
     
-    private func loadImage() {
-        if let fileURL = photo.fileURL,
-           let cgImage = ThumbnailRenderer.loadThumbnail(from: fileURL, maxDimension: 240) {
+    @MainActor
+    private func loadImage() async {
+        #if canImport(UIKit) || canImport(AppKit)
+        if let platformImg = await PhotoThumbnailLoader.shared.loadImage(for: photo, targetSize: CGSize(width: 300, height: 300)) {
             #if canImport(UIKit)
-            self.loadedImage = Image(decorative: cgImage, scale: 1.0)
+            self.loadedImage = Image(uiImage: platformImg)
             #elseif canImport(AppKit)
-            self.loadedImage = Image(decorative: cgImage, scale: 1.0)
+            self.loadedImage = Image(nsImage: platformImg)
             #endif
         }
+        #endif
     }
 }

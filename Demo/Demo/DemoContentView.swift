@@ -5,6 +5,12 @@ import PhotoCategoryKit
 import Photos
 #endif
 
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
+
 /// Main interactive showcase view for PhotoCategoryKit iOS Demo App.
 struct DemoContentView: View {
     @State private var selectedTab = 0
@@ -13,8 +19,10 @@ struct DemoContentView: View {
     @State private var photos: [CategorizedPhoto] = []
     @State private var isScanning = false
     @State private var scanProgress: ClassificationProgress?
-    @State private var selectedSource = 0 // 0: Synthetic Gallery, 1: Photo Library
+    @State private var selectedSource = 1 // Default to 1 (Live Photo Library)
+    @State private var scanAllPhotos = true // Default to true (Whole Photo Library!)
     @State private var statusMessage: String = "Ready to categorize"
+    @State private var activeScanTask: Task<Void, Never>?
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -22,18 +30,42 @@ struct DemoContentView: View {
                 VStack(spacing: 0) {
                     // Source Picker
                     Picker("Photo Source", selection: $selectedSource) {
-                        Text("Sample Gallery").tag(0)
                         Text("Photo Library").tag(1)
+                        Text("Sample Gallery").tag(0)
                     }
                     .pickerStyle(.segmented)
                     .padding(.horizontal)
-                    .padding(.vertical, 8)
+                    .padding(.top, 8)
+                    .padding(.bottom, selectedSource == 1 ? 4 : 8)
                     .onChange(of: selectedSource) { newSource in
+                        activeScanTask?.cancel()
+                        isScanning = false
                         if newSource == 0 {
                             loadSampleGallery()
                         } else {
                             photos = []
+                            scanPhotoLibrary()
                         }
+                    }
+                    
+                    // Scope Toggle (Only visible for Photo Library)
+                    if selectedSource == 1 {
+                        HStack {
+                            Text("Scan Scope:")
+                                .font(.caption.bold())
+                                .foregroundColor(.secondary)
+                            
+                            Picker("Scope", selection: $scanAllPhotos) {
+                                Text("Whole Library (All Photos)").tag(true)
+                                Text("Quick Test (100 Photos)").tag(false)
+                            }
+                            .pickerStyle(.menu)
+                            .font(.caption)
+                            
+                            Spacer()
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 6)
                     }
                     
                     // Main Drop-In Categorizer View
@@ -56,16 +88,24 @@ struct DemoContentView: View {
                 #endif
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) {
-                        Button {
-                            if selectedSource == 0 {
-                                loadSampleGallery()
-                            } else {
-                                scanPhotoLibrary()
+                        if isScanning {
+                            Button(role: .destructive) {
+                                cancelScan()
+                            } label: {
+                                Label("Stop", systemImage: "stop.circle.fill")
+                                    .foregroundColor(.red)
                             }
-                        } label: {
-                            Image(systemName: "arrow.clockwise")
+                        } else {
+                            Button {
+                                if selectedSource == 0 {
+                                    loadSampleGallery()
+                                } else {
+                                    scanPhotoLibrary()
+                                }
+                            } label: {
+                                Label("Scan", systemImage: "arrow.clockwise")
+                            }
                         }
-                        .disabled(isScanning)
                     }
                 }
             }
@@ -83,45 +123,73 @@ struct DemoContentView: View {
             .tag(1)
         }
         .task {
-            loadSampleGallery()
+            // Automatically launch scan on startup
+            if selectedSource == 1 {
+                scanPhotoLibrary()
+            } else {
+                loadSampleGallery()
+            }
         }
     }
     
     // MARK: - Actions
     
+    private func cancelScan() {
+        activeScanTask?.cancel()
+        activeScanTask = nil
+        isScanning = false
+        statusMessage = "Scan cancelled"
+    }
+    
     private func loadSampleGallery() {
+        activeScanTask?.cancel()
         isScanning = true
         statusMessage = "Generating and classifying synthetic photos..."
+        photos = []
         
-        Task {
+        activeScanTask = Task {
             var generated: [CategorizedPhoto] = []
             let classifier = PhotoClassifier.shared
             
             for (index, cat) in PhotoCategory.allCases.enumerated() {
+                if Task.isCancelled { break }
+                
                 // Generate 2 sample images per category
                 for i in 1...2 {
                     if let img = SamplePhotoGenerator.generatePhoto(for: cat, width: 360, height: 360) {
+                        let id = "sample_\(cat.rawValue)_\(i)"
+                        
+                        #if canImport(UIKit)
+                        PhotoThumbnailLoader.shared.cacheImage(UIImage(cgImage: img), for: id)
+                        #elseif canImport(AppKit)
+                        PhotoThumbnailLoader.shared.cacheImage(NSImage(cgImage: img, size: NSSize(width: 360, height: 360)), for: id)
+                        #endif
+                        
                         if let photo = try? classifier.classify(
                             image: img,
-                            id: "\(cat.rawValue)_\(i)",
+                            id: id,
                             dateTaken: Date(),
                             fileSizeBytes: 150_000
                         ) {
                             generated.append(photo)
+                            await MainActor.run {
+                                self.photos.append(photo)
+                            }
                         }
                     }
                 }
                 
-                scanProgress = ClassificationProgress(
-                    processedCount: index + 1,
-                    totalCount: PhotoCategory.allCases.count,
-                    currentItemName: cat.displayName,
-                    thermalStatus: ThermalGovernor.shared.thermalStatusDescription
-                )
+                await MainActor.run {
+                    self.scanProgress = ClassificationProgress(
+                        processedCount: index + 1,
+                        totalCount: PhotoCategory.allCases.count,
+                        currentItemName: cat.displayName,
+                        thermalStatus: ThermalGovernor.shared.thermalStatusDescription
+                    )
+                }
             }
             
             await MainActor.run {
-                self.photos = generated
                 self.isScanning = false
                 self.statusMessage = "Loaded \(generated.count) sample photos"
             }
@@ -130,10 +198,12 @@ struct DemoContentView: View {
     
     private func scanPhotoLibrary() {
         #if canImport(Photos)
+        activeScanTask?.cancel()
         isScanning = true
-        statusMessage = "Scanning Photo Library..."
+        statusMessage = "Accessing Photo Library..."
+        photos = []
         
-        Task {
+        activeScanTask = Task {
             let status = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
             guard status == .authorized || status == .limited else {
                 await MainActor.run {
@@ -144,14 +214,24 @@ struct DemoContentView: View {
             }
             
             let scanner = PhotoLibraryClassifier()
-            let result = await scanner.scanLibrary(maxAssets: 50) { progress in
-                Task { @MainActor in
-                    self.scanProgress = progress
+            let maxCount = scanAllPhotos ? nil : 100
+            
+            let result = await scanner.scanLibrary(
+                maxAssets: maxCount,
+                progressHandler: { progress in
+                    Task { @MainActor in
+                        self.scanProgress = progress
+                    }
+                },
+                onPhotoClassified: { photo, progress in
+                    Task { @MainActor in
+                        self.photos.append(photo)
+                        self.scanProgress = progress
+                    }
                 }
-            }
+            )
             
             await MainActor.run {
-                self.photos = result.allPhotos
                 self.isScanning = false
                 self.statusMessage = "Classified \(result.totalScanned) photos in \(String(format: "%.1f", result.elapsedTimeSeconds))s"
             }

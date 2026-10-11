@@ -188,15 +188,16 @@ public struct PhotoInspectorSheet: View {
                 }
             }
         }
-        .task {
-            if let fileURL = photo.fileURL,
-               let cgImage = ThumbnailRenderer.loadThumbnail(from: fileURL, maxDimension: 480) {
+        .task(id: photo.id) {
+            #if canImport(UIKit) || canImport(AppKit)
+            if let platformImg = await PhotoThumbnailLoader.shared.loadImage(for: photo, targetSize: CGSize(width: 600, height: 600)) {
                 #if canImport(UIKit)
-                self.previewImage = Image(decorative: cgImage, scale: 1.0)
+                self.previewImage = Image(uiImage: platformImg)
                 #elseif canImport(AppKit)
-                self.previewImage = Image(decorative: cgImage, scale: 1.0)
+                self.previewImage = Image(nsImage: platformImg)
                 #endif
             }
+            #endif
         }
     }
 }

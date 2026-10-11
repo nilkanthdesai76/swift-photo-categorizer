@@ -16,7 +16,8 @@ public final class PhotoLibraryClassifier: @unchecked Sendable {
     /// Scans PhotoKit library assets and classifies each photo on-device.
     public func scanLibrary(
         maxAssets: Int? = nil,
-        progressHandler: (@Sendable (ClassificationProgress) -> Void)? = nil
+        progressHandler: (@Sendable (ClassificationProgress) -> Void)? = nil,
+        onPhotoClassified: (@Sendable (CategorizedPhoto, ClassificationProgress) -> Void)? = nil
     ) async -> ClassificationScanResult {
         let startTime = CFAbsoluteTimeGetCurrent()
         
@@ -49,6 +50,7 @@ public final class PhotoLibraryClassifier: @unchecked Sendable {
                 try? await Task.sleep(nanoseconds: delay)
             }
             
+            var classifiedPhoto: CategorizedPhoto?
             if let cgImage = await loadAssetThumbnail(asset: asset, imageManager: imageManager, targetSize: targetSize, options: requestOptions) {
                 if let photo = try? classifier.classify(
                     image: cgImage,
@@ -58,16 +60,22 @@ public final class PhotoLibraryClassifier: @unchecked Sendable {
                     fileSizeBytes: 0
                 ) {
                     results.append(photo)
+                    classifiedPhoto = photo
                 }
             }
             
             let progress = ClassificationProgress(
                 processedCount: index + 1,
                 totalCount: total,
-                currentItemName: "Asset \(index + 1) of \(total)",
+                currentItemName: classifiedPhoto?.primaryCategory.displayName ?? "Asset \(index + 1) of \(total)",
                 thermalStatus: governor.thermalStatusDescription
             )
-            progressHandler?(progress)
+            
+            if let photo = classifiedPhoto {
+                onPhotoClassified?(photo, progress)
+            } else {
+                progressHandler?(progress)
+            }
         }
         
         let elapsed = CFAbsoluteTimeGetCurrent() - startTime

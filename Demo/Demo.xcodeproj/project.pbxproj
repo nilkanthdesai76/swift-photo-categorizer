@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -15,11 +15,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		F1C2D3E40000001100000001 /* Demo */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Demo;
-			sourceTree = "<group>";
-		};
+		F1C2D3E40000001100000001 /* Demo */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Demo; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -101,7 +97,7 @@
 			);
 			mainGroup = F1C2D3E40000001300000001;
 			packageReferences = (
-				F1C2D3E40000000100000001 /* PhotoCategoryKit */,
+				F1C2D3E40000000100000001 /* XCLocalSwiftPackageReference ".." */,
 			);
 			productRefGroup = F1C2D3E40000001400000001 /* Products */;
 			projectDirPath = "";
@@ -200,14 +196,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = 2RYSGLB6FS;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Photo Categorizer";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Required to scan and categorize photos by AI scene domains.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Required to save organized photo albums.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Required to scan and categorize photos by AI scene domains.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -218,8 +216,9 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.nilkanth.PhotoCategorizerDemo;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mindspark.livetranslator;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -230,14 +229,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = 2RYSGLB6FS;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Photo Categorizer";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Required to scan and categorize photos by AI scene domains.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Required to save organized photo albums.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Required to scan and categorize photos by AI scene domains.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -248,8 +249,9 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.nilkanth.PhotoCategorizerDemo;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mindspark.livetranslator;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -258,15 +260,6 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		F1C2D3E40000002000000001 /* Build configuration list for PBXProject "Demo" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				F1C2D3E40000002100000001 /* Debug */,
-				F1C2D3E40000002200000001 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		F1C2D3E40000001600000001 /* Build configuration list for PBXNativeTarget "Demo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -276,23 +269,31 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		F1C2D3E40000002000000001 /* Build configuration list for PBXProject "Demo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F1C2D3E40000002100000001 /* Debug */,
+				F1C2D3E40000002200000001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		F1C2D3E40000000100000001 /* PhotoCategoryKit */ = {
+		F1C2D3E40000000100000001 /* XCLocalSwiftPackageReference ".." */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = "..";
+			relativePath = ..;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		F1C2D3E40000000200000002 /* PhotoCategoryKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F1C2D3E40000000100000001 /* PhotoCategoryKit */;
+			package = F1C2D3E40000000100000001 /* XCLocalSwiftPackageReference ".." */;
 			productName = PhotoCategoryKit;
 		};
 /* End XCSwiftPackageProductDependency section */
-
 	};
 	rootObject = F1C2D3E40000001900000001 /* Project object */;
 }
